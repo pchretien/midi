@@ -50,9 +50,11 @@ SoftwareSerial VS1053_MIDI(0, 2); // TX only, do not use the 'rx' side
 // on a Mega/Leonardo you may have to change the pin to one that 
 // software serial support uses OR use a hardware serial port!
 
-int debounce[16];
+int debounce[19];
+int notes[] = {48,50,52,53,55,57,59,60,62,64,65,67,69,71,72,74};
 
-void setup() {
+void setup() 
+{
   Serial.begin(9600);
   Serial.println("VS1053 MIDI test");
   
@@ -72,7 +74,7 @@ void setup() {
 
   mcp.begin(0x00);      
   mcp1.begin(0x01);      
-  for(int i=0; i<16; i++)
+  for(int i=0; i<19; i++)
   {
     debounce[i] = HIGH;
     
@@ -81,34 +83,65 @@ void setup() {
       mcp.pinMode(i, INPUT);
       mcp.pullUp(i, HIGH);
     }
-    else
+    else if(i<16)
     {
       mcp1.pinMode(i-8, INPUT);
       mcp1.pullUp(i-8, HIGH);
     }
   }
 
+  pinMode(4, INPUT);
+  pinMode(5, INPUT);
+  pinMode(6, INPUT);
+  
   pinMode(13, OUTPUT);  // use the p13 LED as debugging
 }
 
 void loop() 
 { 
-  for(int i=0; i<16; i++)
+  for(int i=0; i<19; i++)
   {
-    int pin = (i<8)?mcp1.digitalRead(i):mcp.digitalRead(15-i);
+    int pin = HIGH;
+    if(i<8)
+      pin = mcp1.digitalRead(i);
+    else if(i<16)
+      pin = mcp.digitalRead(15-i);
+    else if(i==16)
+      pin = digitalRead(4);
+    else if(i==17)
+      pin = digitalRead(5);
+    else if(i==18)
+      pin = digitalRead(6);
+      
     int note = 60+i;
 
     if(debounce[i] == HIGH && pin == LOW)
     {
       debounce[i] = LOW;
-      midiNoteOn(0, note, 127);
 
-      Serial.println(note);
+      if(i<16)
+      {
+        midiNoteOn(0, notes[i], 127);
+      }
+      else if(i==16)
+      {
+        midiSetInstrument(0, random(1,128));
+      }
+      else if(i==17)
+      {
+        midiSetInstrument(0, 20);
+      }
+      else if(i==18)
+      {
+        midiSetInstrument(0, 80);
+      }
     }
     else if(debounce[i] == LOW && pin == HIGH)
     {
       debounce[i] = HIGH;
-      midiNoteOff(0, note, 127);
+
+      if(i<16)
+        midiNoteOff(0, notes[i], 127);
     }
   }
 }
